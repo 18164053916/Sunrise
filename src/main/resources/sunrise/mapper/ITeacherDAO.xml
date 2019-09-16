@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.com.sunrise.dao.ITeacherDAO">
+  <resultMap id="BaseResultMap" type="cn.com.sunrise.mo.Teacher">
+    <id column="id" jdbcType="VARCHAR" property="id" />
+    <result column="teacher_name" jdbcType="VARCHAR" property="name" />
+    <result column="teacher_info" jdbcType="VARCHAR" property="info" />
+    <result column="teacher_type" jdbcType="DECIMAL" property="type" />
+      <result column="teacher_mobile" jdbcType="VARCHAR" property="mobile" />
+      <result column="total" jdbcType="DECIMAL" property="total" />
+  </resultMap>
+
+
+  <sql id="Base_Column_List">
+   id,teacher_name,teacher_info,teacher_type,teacher_mobile
+  </sql>
+
+
+  <select id="getTeacherList"  resultMap="BaseResultMap">
+    select
+    <include refid="Base_Column_List" />,
+      (select count(1) from t_teacher where 1=1 <include refid="teacherQueryFilter"></include> ) as total
+    from t_teacher
+    where 1=1
+      <include refid="teacherQueryFilter"></include>
+      order by update_date desc
+      <if test="pager!= null">
+          <if test="pager.pageSize != null and pager.pageSize != 0">
+              limit  ${pager.pageSize}
+          </if>
+          <if test="pager.pageSize != null and pager.current != null and pager.current != 0 and pager.pageSize != 0">
+              offset  (${pager.current}-1)*${pager.pageSize}
+          </if>
+      </if>
+  </select>
+
+  <insert id="saveTeacher">
+        insert into t_teacher
+        (id,teacher_name,teacher_type,teacher_info,teacher_mobile,create_date,update_date)
+        values (
+        #{teacher.id},#{teacher.name},#{teacher.type},#{teacher.info},#{teacher.mobile},now(),now()
+        )
+    </insert>
+
+    <sql id="teacherQueryFilter">
+        <if test="pager!= null">
+            <foreach item="value" index="key" collection="pager.filter.entrySet()">
+                <if test="key=='name' and value!=null and value !=''">
+                    and  teacher_name like '%${value}%'
+                </if>
+                <if test="key=='teacherType' and value!=null and value !=''">
+                    and  teacher_type =${value}
+                </if>
+            </foreach>
+      </if>
+    </sql>
+
+
+    <update id="updateTeacher">
+        update t_teacher
+            set
+            update_date=now()
+            <if test="teacher.name != null">
+                ,teacher_name=#{teacher.name}
+            </if>
+            <if test="teacher.type != null">
+                ,teacher_type=#{teacher.type}
+            </if>
+            <if test="teacher.info != null">
+                ,teacher_info=#{teacher.info}
+            </if>
+        <if test="teacher.mobile != null">
+            ,teacher_mobile=#{teacher.mobile}
+        </if>
+        where id=#{teacher.id}
+    </update>
+
+    <delete id="deleteTeacher">
+        delete from t_teacher  where id=#{id}
+    </delete>
+
+
+</mapper>

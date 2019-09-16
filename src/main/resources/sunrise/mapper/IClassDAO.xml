@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.com.sunrise.dao.IClassDAO">
+  <resultMap id="BaseResultMap" type="cn.com.sunrise.mo.ClassVO">
+    <id column="id" jdbcType="VARCHAR" property="id" />
+    <result column="class_name" jdbcType="VARCHAR" property="name" />
+    <result column="class_info" jdbcType="VARCHAR" property="info" />
+    <result column="class_level" jdbcType="DECIMAL" property="level" />
+      <result column="total" jdbcType="DECIMAL" property="total" />
+  </resultMap>
+
+
+  <sql id="Base_Column_List">
+   id,class_name,class_info,class_level
+  </sql>
+
+
+  <select id="getClassList"  resultMap="BaseResultMap">
+    select
+    <include refid="Base_Column_List" />,
+      (select count(1) from t_class where 1=1 <include refid="classQueryFilter"></include> ) as total
+    from t_class
+    where 1=1
+      <include refid="classQueryFilter"></include>
+      order by update_date desc
+      <if test="pager!= null">
+          <if test="pager.pageSize != null and pager.pageSize != 0">
+              limit  ${pager.pageSize}
+          </if>
+          <if test="pager.pageSize != null and pager.current != null and pager.current != 0 and pager.pageSize != 0">
+              offset  (${pager.current}-1)*${pager.pageSize}
+          </if>
+      </if>
+  </select>
+
+  <insert id="saveClass">
+        insert into t_class
+        (id,class_name,class_level,class_info,create_date,update_date)
+        values (
+        #{classVO.id},#{classVO.name},#{classVO.level},#{classVO.info},now(),now()
+        )
+    </insert>
+
+    <sql id="classQueryFilter">
+        <if test="pager!= null">
+            <foreach item="value" index="key" collection="pager.filter.entrySet()">
+                <if test="key=='name' and value!=null and value !=''">
+                    and  class_name like '%${value}%'
+                </if>
+                <if test="key=='level' and value!=null and value !=''">
+                    and  class_level =${value}
+                </if>
+            </foreach>
+        </if>
+    </sql>
+
+
+    <update id="updateClass">
+        update t_class
+            set
+            update_date=now()
+            <if test="classVO.name != null">
+                ,class_name=#{classVO.name}
+            </if>
+            <if test="classVO.level != null">
+                ,class_level=#{classVO.level}
+            </if>
+            <if test="classVO.info != null">
+                ,class_info=#{classVO.info}
+            </if>
+        where id=#{classVO.id}
+    </update>
+
+    <delete id="deleteClass">
+        delete from t_class  where id=#{id}
+    </delete>
+
+
+</mapper>

@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.com.sunrise.dao.IAttendanceDAO">
+  <resultMap id="AttendanceBaseResultMap" type="cn.com.sunrise.mo.Attendance">
+    <id column="id" jdbcType="VARCHAR" property="id" />
+    <result column="teacher_name" jdbcType="VARCHAR" property="teacherName" />
+    <result column="class_name" jdbcType="VARCHAR" property="className" />
+      <result column="class_id" jdbcType="VARCHAR" property="classId" />
+      <result column="teacher_id" jdbcType="VARCHAR" property="teacherId" />
+    <result column="class_level" jdbcType="DECIMAL" property="classLevel" />
+      <result column="total" jdbcType="DECIMAL" property="total" />
+      <result column="start_time" jdbcType="VARCHAR" property="startTime" />
+      <result column="student_id" jdbcType="VARCHAR" property="studentId" />
+      <result column="attendance_info" jdbcType="VARCHAR" property="info" />
+  </resultMap>
+
+
+    <sql id="Base_Attendance_Column_List">
+        attendance.id as id,class.class_name as class_name, teacher.teacher_name as teacher_name,class.class_level as class_level,
+        attendance.start_time as start_time,attendance.class_id as class_id,attendance.teacher_id as teacher_id,
+        attendance.attendance_info as attendance_info
+  </sql>
+
+    <sql id="Base_Attendance_Order_By">
+        order by attendance.start_time desc
+    </sql>
+
+    <sql id="Base_Attendance_Group_By">
+        GROUP BY attendance.id,class.class_name,teacher.teacher_name,class.class_level,attendance.start_time,
+        attendance.class_id,attendance.teacher_id,attendance.attendance_info
+    </sql>
+
+
+
+
+    <sql id="attendanceBaseQueryFilter">
+        from t_attendance attendance
+        left join t_class class
+        on attendance.class_id=class.id
+        left join  t_teacher teacher
+        on attendance.teacher_id=teacher.id
+
+    </sql>
+
+    <sql id="attendanceBaseQueryFilterExcludeTotal">
+        left join t_attendance_relation attendanceRelation
+        on attendance.id=attendanceRelation.attendance_id
+    </sql>
+
+    <sql id="attendanceWhereQueryFilter">
+        where 1=1
+        <if test="pager!= null">
+            <foreach item="value" index="key" collection="pager.filter.entrySet()">
+                <if test="key=='startDate' and value!=null and value !=''">
+                    and  attendance.start_time = cast('${value}' as date)
+                </if>
+                <!--<if test="key=='endDate' and value!=null and value !=''">
+                    and  attendance.start_time &lt;= cast('${value}' as date)
+                </if>-->
+                <if test="key=='level' and value!=null and value !=''">
+                    and  class.class_level =${value}
+                </if>
+                <if test="key=='classId' and value!=null and value !=''">
+                    and  class.id =#{value}
+                </if>
+                <if test="key=='teacherId' and value!=null and value !=''">
+                    and  teacher.id =#{value}
+                </if>
+                <if test="key=='studentId' and value!=null and value !=''">
+                    and  attendanceRelation.student_id =#{value}
+                </if>
+            </foreach>
+        </if>
+
+
+    </sql>
+
+
+  <select id="selectSingleAttendance"  resultMap="AttendanceBaseResultMap">
+       select
+      (select count(1)
+      <include refid="attendanceBaseQueryFilter"></include>
+      <if test="flag">
+          <include refid="attendanceBaseQueryFilterExcludeTotal"></include>
+      </if>
+      <include refid="attendanceWhereQueryFilter"></include>
+       ) as total,
+      <include refid="Base_Attendance_Column_List" />,
+      string_agg(attendanceRelation.student_id,',') as student_id
+      <include refid="attendanceBaseQueryFilter"></include>
+      <include refid="attendanceBaseQueryFilterExcludeTotal"></include>
+      <include refid="attendanceWhereQueryFilter"></include>
+      <include refid="Base_Attendance_Group_By"></include>
+      <include refid="Base_Attendance_Order_By"></include>
+      <if test="pager!= null">
+          <if test="pager.pageSize != null and pager.pageSize != 0">
+              limit  ${pager.pageSize}
+          </if>
+          <if test="pager.pageSize != null and pager.current != null and pager.current != 0 and pager.pageSize != 0">
+              offset  (${pager.current}-1)*${pager.pageSize}
+          </if>
+      </if>
+  </select>
+
+  <insert id="saveAttendance">
+        insert into t_attendance
+        (id,class_id,teacher_id,start_time,create_date,attendance_info)
+        values (
+        #{attendance.id},#{attendance.classId},#{attendance.teacherId},cast('${attendance.startTime}' as date),now(),#{attendance.info}
+        )
+    </insert>
+
+    <insert id="saveAttendanceRelation">
+        insert into t_attendance_relation
+        (id,student_id,attendance_id)
+        values
+        <foreach collection="attendanceRelation.studentList" item="student" separator=",">
+            (
+            #{attendanceRelation.id},#{student},#{attendanceRelation.attendanceId}
+            )
+        </foreach>
+    </insert>
+
+
+    <update id="updateAttendance">
+        update t_attendance
+            set
+             create_date=now()
+            <if test="attendance.teacherId != null">
+                ,teacher_id=#{attendance.teacherId}
+            </if>
+            <if test="attendance.classId != null">
+                ,class_id=#{attendance.classId}
+            </if>
+            <if test="attendance.startTime != null">
+                ,start_time=cast('${attendance.startTime}' as date)
+            </if>
+            <if test="attendance.info != null">
+                ,attendance_info=#{attendance.info}
+            </if>
+        where id=#{attendance.id}
+    </update>
+
+    <delete id="deleteAttendanceById">
+        <if test="flag">
+            delete from t_attendance  where id=#{id};
+        </if>
+        delete from t_attendance_relation  where attendance_id=#{id};
+    </delete>
+
+
+</mapper>
